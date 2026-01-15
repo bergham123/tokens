@@ -12,7 +12,7 @@ if not send_val or not fail_val:
 
 # 2. Create filename based on Today's Date (e.g., 25-10-23.json)
 today_date = datetime.now().strftime("%d-%m-%y")
-filename = f"{today_date}.json"
+filename = f"data/{today_date}.json"
 
 # 3. Structure the new data entry
 new_entry = {

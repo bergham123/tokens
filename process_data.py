@@ -2,38 +2,83 @@ import json
 import os
 from datetime import datetime
 
-# 1. Get values from Environment Variables (set by GitHub Action)
-send_val = os.environ.get('SEND_VAL')
-fail_val = os.environ.get('FAIL_VAL')
+# --- CONFIGURATION ---
+DATA_DIR = "data"
+SUMMARY_FILE = "summary.json"
+# ---------------------
 
-if not send_val or not fail_val:
-    print("Error: Missing input parameters.")
-    exit(1)
+def main():
+    # 1. Get inputs
+    send_val = os.environ.get('SEND_VAL')
+    fail_val = os.environ.get('FAIL_VAL')
 
-# 2. Create filename based on Today's Date (e.g., 25-10-23.json)
-today_date = datetime.now().strftime("%d-%m-%y")
-filename = f"data/{today_date}.json"
+    if not send_val or not fail_val:
+        print("Error: Missing parameters.")
+        return
 
-# 3. Structure the new data entry
-new_entry = {
-    "time": datetime.now().strftime("%H:%M:%S"),
-    "paramSend": int(send_val),
-    "paramFaild": int(fail_val) # Keeping your variable name 'paramFaild'
-}
-
-# 4. Read existing data or create new list
-data = []
-if os.path.exists(filename):
     try:
-        with open(filename, 'r') as f:
-            data = json.load(f)
-    except:
-        data = [] # Handle empty or corrupt file
+        current_send = int(send_val)
+        current_fail = int(fail_val)
+    except ValueError:
+        print("Error: Parameters must be numbers.")
+        return
 
-data.append(new_entry)
+    # 2. Setup Data Directory
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
 
-# 5. Save the updated data
-with open(filename, 'w') as f:
-    json.dump(data, f, indent=4)
+    # 3. Handle Daily Data (e.g., data/25-10-23.json)
+    date_str = datetime.now().strftime("%d-%m-%y")
+    daily_filename = os.path.join(DATA_DIR, f"{date_str}.json")
 
-print(f"Updated {filename} successfully.")
+    new_entry = {
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "paramSend": current_send,
+        "paramFaild": current_fail
+    }
+
+    # Read or Create Daily File
+    daily_data = []
+    if os.path.exists(daily_filename):
+        with open(daily_filename, 'r') as f:
+            try:
+                daily_data = json.load(f)
+            except json.JSONDecodeError:
+                daily_data = []
+
+    daily_data.append(new_entry)
+
+    # Save Daily File
+    with open(daily_filename, 'w') as f:
+        json.dump(daily_data, f, indent=4)
+
+    # 4. Handle Summary (Totals & File Paths)
+    summary_data = {
+        "totalSend": 0,
+        "totalFaild": 0,
+        "files": []
+    }
+
+    if os.path.exists(SUMMARY_FILE):
+        with open(SUMMARY_FILE, 'r') as f:
+            try:
+                summary_data = json.load(f)
+            except json.JSONDecodeError:
+                pass
+
+    # Update Totals
+    summary_data["totalSend"] += current_send
+    summary_data["totalFaild"] += current_fail
+
+    # Update File List (Avoid duplicates)
+    if daily_filename not in summary_data["files"]:
+        summary_data["files"].append(daily_filename)
+
+    # Save Summary File
+    with open(SUMMARY_FILE, 'w') as f:
+        json.dump(summary_data, f, indent=4)
+
+    print(f"Success: Updated {daily_filename} and {SUMMARY_FILE}")
+
+if __name__ == "__main__":
+    main()

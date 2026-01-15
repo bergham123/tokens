@@ -1,0 +1,40 @@
+name: Update Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      paramSend:
+        description: 'Send Value'
+        required: true
+      paramFaild:
+        description: 'Fail Value'
+        required: true
+
+permissions:
+  contents: write # Allows the action to commit back to your repo
+
+jobs:
+  run_script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Run Process Script
+        env:
+          SEND_VAL: ${{ inputs.paramSend }}
+          FAIL_VAL: ${{ inputs.paramFaild }}
+        run: python process_data.py
+
+      - name: Commit changes
+        run: |
+          git config --global user.name "Action Bot"
+          git config --global user.email "action@github.com"
+          git add .
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update JSON data [skip ci]"
+          git push
